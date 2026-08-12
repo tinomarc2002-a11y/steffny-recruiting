@@ -354,6 +354,18 @@ form{ margin:clamp(24px,4vw,32px) 0 0; }
 .legal{ font-size:12px; color:var(--muted); text-align:center; margin:14px 0 0; line-height:1.5; }
 .legal a{ color:var(--green); text-decoration:underline; text-underline-offset:2px; }
 
+/* So geht es weiter – die drei Schritte unter dem Formular */
+.how{ margin-top:clamp(22px,4vw,28px); border-top:1px solid var(--line); }
+.how-steps{ list-style:none; margin:0; padding:0; display:grid; gap:12px; }
+.how-steps li{ display:flex; gap:13px; align-items:flex-start; }
+.how-steps .n{
+  flex:none; width:27px; height:27px; border-radius:50%; margin-top:1px;
+  background:var(--green); color:#FFF; font-size:13.5px; font-weight:600;
+  display:grid; place-items:center;
+}
+.how-steps p{ margin:0; font-size:14px; color:var(--muted); line-height:1.55; }
+.how-steps b{ color:var(--ink); font-weight:600; }
+
 .alert{
   display:none; margin:0 0 16px; padding:13px 15px;
   background:#FCF6F5; border:1px solid #E8D3D1; border-radius:10px;
@@ -501,6 +513,20 @@ footer a:hover{ color:var(--green); text-decoration:underline; }
             <a href="https://www.renesteffny.de/datenschutz/" target="_blank" rel="noopener">Datenschutzerklärung</a>.
           </p>
         </form>
+
+        <div class="how">
+          <p class="sec-title">So geht es weiter</p>
+          <ol class="how-steps">
+            <li><span class="n">1</span>
+              <p>Nach dem Abschicken bekommst du <b>innerhalb von 24 Stunden</b> eine
+              Rückmeldung von uns.</p></li>
+            <li><span class="n">2</span>
+              <p>Im Telefonat schauen wir gemeinsam, ob so weit alles passt.</p></li>
+            <li><span class="n">3</span>
+              <p>Wenn ja, bekommst du eine Einladung zum <b>persönlichen
+              Vorstellungsgespräch</b> – dort klären wir alles Weitere.</p></li>
+          </ol>
+        </div>
       </div>
     </section>
 
