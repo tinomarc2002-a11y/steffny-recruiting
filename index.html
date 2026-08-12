@@ -384,6 +384,39 @@ form{ margin:clamp(24px,4vw,32px) 0 0; }
 .how-steps p{ margin:0; font-size:14px; color:var(--muted); line-height:1.55; }
 .how-steps b{ color:var(--ink); font-weight:600; }
 
+/* Direktkontakt auf der Danke-Seite */
+.kontakt{
+  margin-top:clamp(22px,4vw,28px); padding:20px 18px 18px;
+  background:var(--sage-50); border-radius:16px;
+}
+.kontakt-lead{
+  margin:0 0 14px; text-align:center; font-size:14.5px;
+  font-weight:600; color:var(--green);
+}
+.kontakt-zeile{
+  display:flex; align-items:center; gap:13px;
+  padding:12px 14px; margin-bottom:9px;
+  background:#FFF; border-radius:12px; text-decoration:none;
+  box-shadow:0 1px 2px rgba(20,32,31,.05);
+  transition:transform .2s var(--spring), box-shadow .2s var(--ease);
+}
+.kontakt-zeile:hover{ transform:translateY(-2px); box-shadow:0 6px 16px rgba(20,32,31,.10); }
+.kontakt-zeile:focus-visible{ outline:3px solid var(--green); outline-offset:2px; }
+.kontakt-ico{
+  flex:none; width:38px; height:38px; border-radius:11px;
+  display:grid; place-items:center; background:var(--sage-50); color:var(--green);
+}
+.kontakt-ico svg{ width:21px; height:21px; }
+.kontakt-txt{ min-width:0; }
+.kontakt-txt b{
+  display:block; font-size:15px; font-weight:600; color:var(--ink);
+  line-height:1.3; word-break:break-word;
+}
+.kontakt-txt small{ display:block; font-size:12.5px; color:var(--muted); margin-top:1px; }
+.kontakt-adresse{
+  margin:12px 0 0; text-align:center; font-size:12.5px; color:var(--muted);
+}
+
 .alert{
   display:none; margin:0 0 16px; padding:13px 15px;
   background:#FCF6F5; border:1px solid #E8D3D1; border-radius:10px;
@@ -625,6 +658,28 @@ footer a:hover{ color:var(--green); text-decoration:underline; }
           <div class="mark" id="markB"></div>
           <h1>Danke, <span id="fname">du</span>!</h1>
           <p id="doneText">Deine Bewerbung ist bei uns. Wir melden uns innerhalb von 24 Stunden bei dir.</p>
+        </div>
+
+        <div class="how">
+          <p class="sec-title">So geht es weiter</p>
+          <ol class="how-steps" id="doneSteps"></ol>
+        </div>
+
+        <div class="kontakt">
+          <p class="kontakt-lead">Du kannst es kaum abwarten?</p>
+          <a class="kontakt-zeile" href="tel:+492441775262" id="kTel">
+            <span class="kontakt-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1.1 1A16 16 0 0 1 4 5.1 1 1 0 0 1 5 4z"/></svg>
+            </span>
+            <span class="kontakt-txt"><b>02441 775262</b><small>Praxis Kall – ruf einfach an</small></span>
+          </a>
+          <a class="kontakt-zeile" href="mailto:info-kall@renesteffny.de" id="kMail">
+            <span class="kontakt-ico">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3.6 7l8.4 6 8.4-6"/></svg>
+            </span>
+            <span class="kontakt-txt"><b>info-kall@renesteffny.de</b><small>Schreib uns direkt</small></span>
+          </a>
+          <p class="kontakt-adresse">Weiherbenden 4b · 53925 Kall</p>
         </div>
       </div>
     </section>
@@ -1393,10 +1448,30 @@ function bindLeadForm(cfg){
 
     const body = payload({ name, mail, tel }, cfg.pfad);
 
+    /* Die Schritte auf der Danke-Seite unterscheiden sich je nach Pfad:
+       Wer noch in der Ausbildung steckt, bekommt kein 24-Stunden-Versprechen
+       mit Gesprächseinladung – das wäre nicht ehrlich. */
+    const SCHRITTE = {
+      regulaer: [
+        'Du bekommst <b>innerhalb von 24 Stunden</b> eine Rückmeldung von uns.',
+        'Im Telefonat schauen wir gemeinsam, ob so weit alles passt.',
+        'Wenn ja, laden wir dich zum <b>persönlichen Vorstellungsgespräch</b> ein – dort klären wir alles Weitere.'
+      ],
+      ausbildung: [
+        'Wir melden uns in den nächsten Tagen bei dir und lernen dich kennen.',
+        'Im Gespräch klären wir, ob schon jetzt ein <b>Praktikum</b> für dich passt.',
+        'Und wir merken dich für die Zeit <b>nach deinem Abschluss</b> vor.'
+      ]
+    };
+
     const done = () => {
       T.abgeschickt = true;   // kein Absprung-Ereignis mehr beim Verlassen
       T.letzterOrt = 'Danke-Seite';
       clarityMerkmal('ergebnis', 'Bewerbung abgeschickt');
+
+      $('#doneSteps').innerHTML = (SCHRITTE[cfg.pfad] || SCHRITTE.regulaer)
+        .map((s, i) => '<li><span class="n">' + (i + 1) + '</span><p>' + s + '</p></li>')
+        .join('');
       track('bewerbung_erfolgreich', {
         label: cfg.pfad, pfad: cfg.pfad,
         dauerSekunden: Math.round((Date.now() - T.start) / 1000)
@@ -1484,6 +1559,10 @@ $('#perks').innerHTML = PERKS.map((p, i) =>
     if (!booted) render();   // beim ersten Start Frage 1 aufbauen
   });
 });
+
+/* Direktkontakt auf der Danke-Seite mitzählen – zeigt, wie dringlich jemand ist */
+$('#kTel').addEventListener('click', () => track('kontakt_anruf', { label: 'Danke-Seite' }));
+$('#kMail').addEventListener('click', () => track('kontakt_mail', { label: 'Danke-Seite' }));
 
 track('startseite_gesehen', { label: document.referrer ? 'mit Herkunft' : 'direkt',
                               herkunft: document.referrer || 'direkt' });
