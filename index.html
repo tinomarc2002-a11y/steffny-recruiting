@@ -18,6 +18,19 @@
 <script>window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
 
+<!-- Microsoft Clarity: Sitzungsaufzeichnungen und Heatmaps.
+     Projekt-ID auf clarity.microsoft.com anlegen und hier eintragen.
+     Bleibt das Feld leer, wird gar nichts geladen. -->
+<script>
+window.CLARITY_ID = '';
+(function (c, l, a, r, i, t, y) {
+  if (!i) return;
+  c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+  t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i;
+  y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+})(window, document, 'clarity', 'script', window.CLARITY_ID);
+</script>
+
 <style>
 :root{
   --green:    #314E4B;
@@ -664,8 +677,19 @@ function track(name, props){
   if (window.gtag) window.gtag('event', name, daten);
   // Meta-Pixel: eigene Ereignisse laufen über trackCustom
   if (window.fbq) window.fbq('trackCustom', name, daten);
+  // Microsoft Clarity: Ereignis plus Merkmal, damit sich Sitzungen im
+  // Dashboard danach filtern lassen ("zeig mir alle, die bei Frage 3 abbrachen")
+  if (window.clarity){
+    window.clarity('event', name);
+    if (daten.label) window.clarity('set', name, String(daten.label));
+  }
 
   if (location.hostname === 'localhost') console.debug('[track]', name, daten);
+}
+
+/* Clarity-Merkmale, die den Zustand der Sitzung beschreiben */
+function clarityMerkmal(schluessel, wert){
+  if (window.clarity) window.clarity('set', schluessel, String(wert));
 }
 
 /* Wie lange hing jemand an der aktuellen Frage? */
@@ -680,6 +704,8 @@ function verweildauer(){
 function absprungMelden(){
   if (T.abgeschickt) return;
   T.abgeschickt = true;   // nur einmal senden
+  clarityMerkmal('absprung_bei', T.letzterOrt);
+  clarityMerkmal('ergebnis', 'abgesprungen');
   track('absprung', {
     label: T.letzterOrt,
     letzterOrt: T.letzterOrt,
@@ -1167,7 +1193,10 @@ function render(){
   lockBriefly(260);
 
   T.letzterOrt = 'Frage ' + (idx + 1) + ' – ' + step.id;
-  if (idx + 1 > T.weitester) T.weitester = idx + 1;
+  if (idx + 1 > T.weitester){
+    T.weitester = idx + 1;
+    clarityMerkmal('weiteste_frage', T.weitester + ' (' + step.id + ')');
+  }
   track('frage_gesehen', { label: T.letzterOrt, nummer: idx + 1, frage: step.id });
 }
 let booted = false;
@@ -1211,11 +1240,14 @@ function wire(step){
           locked = false;
           if (branch === 'student'){
             T.letzterOrt = 'Pfad Ausbildung/Studium';
+            clarityMerkmal('pfad', 'Ausbildung/Studium');
             track('pfad_ausbildung', { label: v });
             $('#markS').innerHTML = BIG_WAIT; show('s-student'); return;
           }
           if (branch === 'end'){
             T.letzterOrt = 'Ausgeschieden (kein Abschluss)';
+            clarityMerkmal('pfad', 'Ausgeschieden');
+            clarityMerkmal('ergebnis', 'kein Abschluss');
             track('ausgeschieden', { label: v });
             $('#markE').innerHTML = BIG_END; show('s-end'); return;
           }
@@ -1262,6 +1294,10 @@ $('#back').addEventListener('click', back);
 function toForm(){
   $('#markA').innerHTML = BIG;
   T.letzterOrt = 'Kontaktformular';
+  clarityMerkmal('pfad', 'Regulär');
+  // Wer das Formular erreicht, ist der interessanteste Fall – diese
+  // Aufzeichnung soll Clarity auf jeden Fall behalten.
+  if (window.clarity) window.clarity('upgrade', 'Formular erreicht');
   track('formular_gesehen', { label: 'regulär', pfad: 'regulär', sekunden: verweildauer() });
   show('s-form');
 }
@@ -1360,6 +1396,7 @@ function bindLeadForm(cfg){
     const done = () => {
       T.abgeschickt = true;   // kein Absprung-Ereignis mehr beim Verlassen
       T.letzterOrt = 'Danke-Seite';
+      clarityMerkmal('ergebnis', 'Bewerbung abgeschickt');
       track('bewerbung_erfolgreich', {
         label: cfg.pfad, pfad: cfg.pfad,
         dauerSekunden: Math.round((Date.now() - T.start) / 1000)
