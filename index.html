@@ -13,6 +13,11 @@
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23314E4B'/%3E%3Cpath d='M10 20c3-1 4-3 4-6a2.5 2.5 0 1 1 5 0c0 4-3 7-9 8' stroke='%238FBEA8' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 
+<!-- Vercel Analytics: Warteschlange zuerst, damit früh gefeuerte Ereignisse
+     nicht verloren gehen, wenn das Skript noch lädt. -->
+<script>window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+
 <style>
 :root{
   --green:    #314E4B;
@@ -628,6 +633,66 @@ footer a:hover{ color:var(--green); text-decoration:underline; }
 const ENDPOINT = 'https://formspree.io/f/PLATZHALTER';
 
 /* ============================================================
+   Tracking
+   Läuft ohne Konfiguration über Vercel Analytics. Wer zusätzlich
+   Google Analytics oder den Meta-Pixel nutzt, trägt hier die IDs ein –
+   dann laufen dieselben Ereignisse auch dorthin.
+   ============================================================ */
+const GA4_ID   = '';   // z. B. 'G-XXXXXXXXXX'
+const META_PIXEL = ''; // z. B. '123456789012345'
+
+const T = {
+  start: Date.now(),
+  schrittStart: Date.now(),
+  weitester: 0,          // höchste erreichte Frage
+  letzterOrt: 'Startseite',
+  spur: [],              // vollständiger Pfad, wandert mit in die Bewerbung
+  abgeschickt: false
+};
+
+function track(name, props){
+  const daten = Object.assign({
+    sekundenSeitStart: Math.round((Date.now() - T.start) / 1000)
+  }, props || {});
+
+  T.spur.push(name + (props && props.label ? ': ' + props.label : ''));
+
+  // Vercel Analytics
+  if (window.va) window.va('event', Object.assign({ name: name }, daten));
+  // Google Analytics 4
+  if (window.gtag) window.gtag('event', name, daten);
+  // Meta-Pixel: eigene Ereignisse laufen über trackCustom
+  if (window.fbq) window.fbq('trackCustom', name, daten);
+
+  if (location.hostname === 'localhost') console.debug('[track]', name, daten);
+}
+
+/* Wie lange hing jemand an der aktuellen Frage? */
+function verweildauer(){
+  const s = Math.round((Date.now() - T.schrittStart) / 1000);
+  T.schrittStart = Date.now();
+  return s;
+}
+
+/* Absprung: feuert beim Verlassen der Seite, solange nichts abgeschickt wurde.
+   pagehide ist zuverlässiger als beforeunload, vor allem auf iOS. */
+function absprungMelden(){
+  if (T.abgeschickt) return;
+  T.abgeschickt = true;   // nur einmal senden
+  track('absprung', {
+    label: T.letzterOrt,
+    letzterOrt: T.letzterOrt,
+    weitesteFrage: T.weitester,
+    verweildauerSekunden: Math.round((Date.now() - T.start) / 1000),
+    pfad: T.spur.join(' > ')
+  });
+}
+window.addEventListener('pagehide', absprungMelden);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') absprungMelden();
+});
+
+/* ============================================================
    Icons – einfarbige Linien, damit sie auf dem grünen Balken sitzen
    ============================================================ */
 const L = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
@@ -950,6 +1015,14 @@ const BIG_END =
 /* ============================================================
    Die sechs Fragen
    ============================================================ */
+/* Reihenfolge bewusst gewählt:
+   1 Qualifizierer (muss zuerst, steuert die Verzweigung) und zugleich leichteste Frage
+   2 ein Klick, bestätigt die eigene Erfahrung – bringt Schwung
+   3 die schwerste Frage (Mehrfachauswahl) in die Mitte, wo die Bindung am höchsten ist
+   4 kurze Verschnaufpause mit zwei Antworten direkt nach der schweren Frage
+   5+6 Blick in die Zukunft: Wer sich Umfang und Starttermin ausmalt, ist innerlich
+       schon halb dabei – danach fühlt sich das Kontaktformular wie der nächste
+       logische Schritt an, nicht wie eine Hürde. */
 const STEPS = [
   {
     id:'abschluss',
@@ -958,6 +1031,16 @@ const STEPS = [
       { v:'Ja',                                  ico:'urkunde' },
       { v:'Bin noch in Ausbildung / Studium',    ico:'buecher', branch:'student' },
       { v:'Nein',                                ico:'frage',   branch:'end' }
+    ]
+  },
+  {
+    id:'erfahrung',
+    title:'Wie viel Berufserfahrung hast du?',
+    options:[
+      { v:'Unter 2 Jahren', ico:'spross' },
+      { v:'2–5 Jahre',      ico:'uhr' },
+      { v:'5–10 Jahre',     ico:'medaille' },
+      { v:'Über 10 Jahre',  ico:'krone' }
     ]
   },
   {
@@ -975,21 +1058,19 @@ const STEPS = [
     ]
   },
   {
-    id:'erfahrung',
-    title:'Wie viel Berufserfahrung hast du?',
-    options:[
-      { v:'Unter 2 Jahren', ico:'spross' },
-      { v:'2–5 Jahre',      ico:'uhr' },
-      { v:'5–10 Jahre',     ico:'medaille' },
-      { v:'Über 10 Jahre',  ico:'krone' }
-    ]
-  },
-  {
     id:'fuehrerschein',
     title:'Hast du einen Führerschein der Klasse B?',
     options:[
       { v:'Ja',   ico:'auto' },
       { v:'Nein', ico:'fuss' }
+    ]
+  },
+  {
+    id:'umfang',
+    title:'Wie möchtest du bei uns arbeiten?',
+    options:[
+      { v:'Vollzeit', ico:'sonne' },
+      { v:'Teilzeit', ico:'halbmond', sub:'ab 20 Stunden' }
     ]
   },
   {
@@ -1000,14 +1081,6 @@ const STEPS = [
       { v:'In 1–3 Monaten',      ico:'kalender' },
       { v:'In 3–6 Monaten',      ico:'sanduhr' },
       { v:'Später / noch offen', ico:'horizont' }
-    ]
-  },
-  {
-    id:'umfang',
-    title:'Wie möchtest du bei uns arbeiten?',
-    options:[
-      { v:'Vollzeit', ico:'sonne' },
-      { v:'Teilzeit', ico:'halbmond', sub:'ab 20 Stunden' }
     ]
   }
 ];
@@ -1091,6 +1164,10 @@ function render(){
   wire(step);
   if (booted) toTop(); else booted = true;  // beim ersten Aufbau bleibt das Logo im Bild
   lockBriefly(260);
+
+  T.letzterOrt = 'Frage ' + (idx + 1) + ' – ' + step.id;
+  if (idx + 1 > T.weitester) T.weitester = idx + 1;
+  track('frage_gesehen', { label: T.letzterOrt, nummer: idx + 1, frage: step.id });
 }
 let booted = false;
 
@@ -1122,20 +1199,44 @@ function wire(step){
       } else {
         answers[step.id] = v;
         locked = true;
+        track('frage_beantwortet', {
+          label: step.id + ' = ' + v,
+          nummer: idx + 1, frage: step.id, antwort: v, sekunden: verweildauer()
+        });
         // Verzweigung: Ausbildung/Studium läuft noch -> eigener Kontaktpfad,
         // kein Abschluss -> freundliches Ende. Sonst normal weiter.
         const branch = (step.options.find(o => o.v === v) || {}).branch;
         setTimeout(() => {
           locked = false;
-          if (branch === 'student'){ $('#markS').innerHTML = BIG_WAIT; show('s-student'); return; }
-          if (branch === 'end'){ $('#markE').innerHTML = BIG_END; show('s-end'); return; }
+          if (branch === 'student'){
+            T.letzterOrt = 'Pfad Ausbildung/Studium';
+            track('pfad_ausbildung', { label: v });
+            $('#markS').innerHTML = BIG_WAIT; show('s-student'); return;
+          }
+          if (branch === 'end'){
+            T.letzterOrt = 'Ausgeschieden (kein Abschluss)';
+            track('ausgeschieden', { label: v });
+            $('#markE').innerHTML = BIG_END; show('s-end'); return;
+          }
           next();
         }, softMotion ? 0 : 300);
       }
     });
   });
 
-  if (step.multi){ refresh(); nextBtn.addEventListener('click', advance); }
+  if (step.multi){
+    refresh();
+    nextBtn.addEventListener('click', () => {
+      if (locked) return;
+      const sel = answers[step.id] || [];
+      track('frage_beantwortet', {
+        label: step.id + ' = ' + sel.join(', '),
+        nummer: idx + 1, frage: step.id, antwort: sel.join(', '),
+        anzahl: sel.length, sekunden: verweildauer()
+      });
+      advance();
+    });
+  }
 }
 
 function advance(){ if (!locked) next(); }
@@ -1149,7 +1250,8 @@ function next(){
 
 function back(){
   if (locked) return;
-  if (!past.length) return show('s-intro');  // von Frage 1 zurück zur Startseite
+  track('zurueck', { label: T.letzterOrt, von: T.letzterOrt });
+  if (!past.length){ T.letzterOrt = 'Startseite'; return show('s-intro'); }
   idx = past.pop();
   render();
 }
@@ -1158,6 +1260,8 @@ $('#back').addEventListener('click', back);
 
 function toForm(){
   $('#markA').innerHTML = BIG;
+  T.letzterOrt = 'Kontaktformular';
+  track('formular_gesehen', { label: 'regulär', pfad: 'regulär', sekunden: verweildauer() });
   show('s-form');
 }
 
@@ -1194,7 +1298,11 @@ function payload(c, pfad){
     telefon: c.tel,
     'Pfad': student ? 'Noch in Ausbildung/Studium' : 'Regulär',
     'Abschluss': a.abschluss || '',
-    'Übersicht': lines.join('\n')
+    'Übersicht': lines.join('\n'),
+    // Klickpfad und Dauer wandern mit – so ist auch ohne Analytics-Werkzeug
+    // sichtbar, wie jemand durch den Funnel gelaufen ist.
+    'Klickpfad': T.spur.join(' > '),
+    'Dauer gesamt (Sek.)': Math.round((Date.now() - T.start) / 1000)
   };
   if (!student){
     body['Weiterbildungen'] = (a.weiterbildung || []).join(', ');
@@ -1230,6 +1338,8 @@ function bindLeadForm(cfg){
 
     const first = nBad ? cfg.iName : mBad ? cfg.iMail : tBad ? cfg.iTel : null;
     if (first){
+      const fehlend = [nBad && 'Name', mBad && 'E-Mail', tBad && 'Telefon'].filter(Boolean);
+      track('formular_fehler', { label: fehlend.join(', '), felder: fehlend.join(', '), pfad: cfg.pfad });
       alertBox.textContent = 'Bitte ergänze die markierten Felder – dann können wir dich erreichen.';
       alertBox.classList.add('on');
       $(first).focus();
@@ -1237,6 +1347,7 @@ function bindLeadForm(cfg){
       return;
     }
     alertBox.classList.remove('on');
+    track('formular_abgeschickt', { label: cfg.pfad, pfad: cfg.pfad });
 
     const btn = $(cfg.send);
     const label = btn.innerHTML;
@@ -1246,6 +1357,14 @@ function bindLeadForm(cfg){
     const body = payload({ name, mail, tel }, cfg.pfad);
 
     const done = () => {
+      T.abgeschickt = true;   // kein Absprung-Ereignis mehr beim Verlassen
+      T.letzterOrt = 'Danke-Seite';
+      track('bewerbung_erfolgreich', {
+        label: cfg.pfad, pfad: cfg.pfad,
+        dauerSekunden: Math.round((Date.now() - T.start) / 1000)
+      });
+      // Standardereignis für Meta-Werbekampagnen
+      if (window.fbq) window.fbq('track', 'Lead', { content_name: 'Physiotherapie ' + cfg.pfad });
       $('#fname').textContent = name.split(' ')[0] || 'du';
       $('#doneText').textContent = cfg.pfad === 'ausbildung'
         ? 'Deine Daten sind bei uns. Wir melden uns bei dir – und behalten dich für die Zeit nach deinem Abschluss im Blick.'
@@ -1254,6 +1373,7 @@ function bindLeadForm(cfg){
       show('s-done');
     };
     const fail = () => {
+      track('senden_fehlgeschlagen', { label: cfg.pfad, pfad: cfg.pfad });
       btn.disabled = false;
       btn.innerHTML = label;
       alertBox.innerHTML = 'Das Senden hat gerade nicht geklappt. Ruf uns gerne direkt an: ' +
@@ -1283,8 +1403,16 @@ bindLeadForm({ form:'#form2', alert:'#alert2', iName:'#i2-name', iMail:'#i2-mail
                fName:'#f2-name', fMail:'#f2-mail', fTel:'#f2-tel', send:'#send2', pfad:'ausbildung' });
 
 /* Zurück aus den Sonderpfaden zu Frage 1 */
-$('#backStudent').addEventListener('click', () => show('s-quiz'));
-$('#backEnd').addEventListener('click', () => show('s-quiz'));
+$('#backStudent').addEventListener('click', () => {
+  track('zurueck', { label: 'Pfad Ausbildung/Studium' });
+  T.letzterOrt = 'Frage 1 – abschluss';
+  show('s-quiz');
+});
+$('#backEnd').addEventListener('click', () => {
+  track('zurueck', { label: 'Ausgeschieden' });
+  T.letzterOrt = 'Frage 1 – abschluss';
+  show('s-quiz');
+});
 
 /* ============================================================
    Startseite aufbauen und ins Quiz überleiten
@@ -1296,13 +1424,18 @@ $('#perks').innerHTML = PERKS.map((p, i) =>
   '</li>'
 ).join('');
 
-/* Beide Knöpfe – oben und unten – führen ins Quiz */
-['#startTop', '#start'].forEach(sel => {
+/* Beide Knöpfe – oben und unten – führen ins Quiz. Getrennt gezählt,
+   damit sichtbar wird, welcher tatsächlich geklickt wird. */
+[['#startTop','oben'], ['#start','unten']].forEach(([sel, ort]) => {
   $(sel).addEventListener('click', () => {
+    track('quiz_gestartet', { label: ort, knopf: ort, sekunden: verweildauer() });
     show('s-quiz');
     if (!booted) render();   // beim ersten Start Frage 1 aufbauen
   });
 });
+
+track('startseite_gesehen', { label: document.referrer ? 'mit Herkunft' : 'direkt',
+                              herkunft: document.referrer || 'direkt' });
 </script>
 
 </body>
