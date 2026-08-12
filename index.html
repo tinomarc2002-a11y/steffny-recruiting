@@ -626,11 +626,12 @@ footer a:hover{ color:var(--green); text-decoration:underline; }
 
 <script>
 /* ============================================================
-   Ziel für die Bewerbungen.
-   Vor dem Livegang durch den echten Formspree-Endpunkt ersetzen –
-   solange hier PLATZHALTER steht, wird NICHTS verschickt.
+   Ziel für die Bewerbungen (Formspree).
+   Gesendet wird per fetch als JSON – nicht als klassischer Form-POST,
+   weil die Nutzlast zusammengebaut wird: Quizantworten, Klickpfad und
+   Verweildauer sind keine Formularfelder.
    ============================================================ */
-const ENDPOINT = 'https://formspree.io/f/PLATZHALTER';
+const ENDPOINT = 'https://formspree.io/f/mppardvy';
 
 /* ============================================================
    Tracking
@@ -1393,7 +1394,20 @@ function bindLeadForm(cfg){
       method:'POST',
       headers:{ 'Accept':'application/json', 'Content-Type':'application/json' },
       body: JSON.stringify(body)
-    }).then(r => { r.ok ? done() : fail(); }).catch(fail);
+    })
+    .then(async r => {
+      if (r.ok) return done();
+      // Formspree liefert bei Fehlern eine Begründung mit – die gehört ins Log,
+      // sonst steht man bei Problemen mit einer nackten Statusnummer da.
+      let grund = r.status;
+      try {
+        const j = await r.json();
+        if (j && j.errors) grund += ' – ' + j.errors.map(e => e.message).join('; ');
+      } catch(e){ /* keine JSON-Antwort */ }
+      console.error('[Bewerbung] Formspree hat abgelehnt:', grund);
+      fail();
+    })
+    .catch(err => { console.error('[Bewerbung] Netzwerkfehler:', err); fail(); });
   });
 }
 
