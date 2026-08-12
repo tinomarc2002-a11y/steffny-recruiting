@@ -1,0 +1,7 @@
+# Vercel-Verknüpfung und Token
+.vercel
+.env*
+
+# Foto-Originale (2,5 MB pro Stück) – deployt werden die optimierten JPGs
+Maurice an der Beinpresse.png
+Team Foto.png
