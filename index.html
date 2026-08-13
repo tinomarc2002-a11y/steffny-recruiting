@@ -15,8 +15,17 @@
 
 <!-- Vercel Analytics: Warteschlange zuerst, damit früh gefeuerte Ereignisse
      nicht verloren gehen, wenn das Skript noch lädt. -->
-<script>window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };</script>
-<script defer src="/_vercel/insights/script.js"></script>
+<script>
+window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };
+/* Auf true stellen, sobald Web Analytics im Vercel-Dashboard aktiviert ist.
+   Vorher liefert das Skript einen 404 und verschmutzt nur die Konsole. */
+window.VERCEL_ANALYTICS = false;
+if (window.VERCEL_ANALYTICS){
+  var vaS = document.createElement('script');
+  vaS.defer = true; vaS.src = '/_vercel/insights/script.js';
+  document.head.appendChild(vaS);
+}
+</script>
 
 <!-- Microsoft Clarity: Sitzungsaufzeichnungen und Heatmaps.
      Projekt-ID auf clarity.microsoft.com anlegen und hier eintragen.
@@ -753,17 +762,31 @@ function track(name, props){
   if (window.fbq) window.fbq('trackCustom', name, daten);
   // Microsoft Clarity: Ereignis plus Merkmal, damit sich Sitzungen im
   // Dashboard danach filtern lassen ("zeig mir alle, die bei Frage 3 abbrachen")
-  if (window.clarity){
-    window.clarity('event', name);
-    if (daten.label) window.clarity('set', name, String(daten.label));
-  }
+  clarityRuf('event', name);
+  if (daten.label) clarityRuf('set', name, String(daten.label));
 
   if (location.hostname === 'localhost') console.debug('[track]', name, daten);
 }
 
+/* Clarity braucht nach dem Laden noch einen Moment, bis es intern bereit ist.
+   Aufrufe davor quittiert es mit einer abgewiesenen Promise, die als
+   "Cannot read properties of null (reading 'sequence')" in der Konsole landet.
+   Deshalb sammeln wir frühe Aufrufe und geben sie erst danach ab. */
+let clarityBereit = false;
+const clarityStau = [];
+function clarityRuf(){
+  const args = Array.prototype.slice.call(arguments);
+  if (!clarityBereit){ clarityStau.push(args); return; }
+  if (window.clarity){ try { window.clarity.apply(null, args); } catch(e){} }
+}
+window.addEventListener('load', () => setTimeout(() => {
+  clarityBereit = true;
+  while (clarityStau.length) clarityRuf.apply(null, clarityStau.shift());
+}, 1500));
+
 /* Clarity-Merkmale, die den Zustand der Sitzung beschreiben */
 function clarityMerkmal(schluessel, wert){
-  if (window.clarity) window.clarity('set', schluessel, String(wert));
+  clarityRuf('set', schluessel, String(wert));
 }
 
 /* Wie lange hing jemand an der aktuellen Frage? */
@@ -1429,7 +1452,7 @@ function toForm(){
   clarityMerkmal('pfad', 'Regulär');
   // Wer das Formular erreicht, ist der interessanteste Fall – diese
   // Aufzeichnung soll Clarity auf jeden Fall behalten.
-  if (window.clarity) window.clarity('upgrade', 'Formular erreicht');
+  clarityRuf('upgrade', 'Formular erreicht');
   seiteSetzen(SEITEN.form.pfad, SEITEN.form.titel);
   track('formular_gesehen', { label: 'regulär', pfad: 'regulär', sekunden: verweildauer() });
   show('s-form');
