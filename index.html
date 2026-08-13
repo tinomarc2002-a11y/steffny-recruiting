@@ -13,45 +13,12 @@
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23314E4B'/%3E%3Cpath d='M10 20c3-1 4-3 4-6a2.5 2.5 0 1 1 5 0c0 4-3 7-9 8' stroke='%238FBEA8' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 
-<!-- Vercel Analytics: Warteschlange zuerst, damit früh gefeuerte Ereignisse
-     nicht verloren gehen, wenn das Skript noch lädt. -->
-<script>
-window.va = window.va || function(){ (window.vaq = window.vaq || []).push(arguments); };
-/* Auf true stellen, sobald Web Analytics im Vercel-Dashboard aktiviert ist.
-   Vorher liefert das Skript einen 404 und verschmutzt nur die Konsole. */
-window.VERCEL_ANALYTICS = false;
-if (window.VERCEL_ANALYTICS){
-  var vaS = document.createElement('script');
-  vaS.defer = true; vaS.src = '/_vercel/insights/script.js';
-  document.head.appendChild(vaS);
-}
-</script>
-
-<!-- Microsoft Clarity: Sitzungsaufzeichnungen und Heatmaps.
-     Projekt-ID auf clarity.microsoft.com anlegen und hier eintragen.
-     Bleibt das Feld leer, wird gar nichts geladen. -->
+<!-- Kennungen der Messwerkzeuge. Geladen wird hier nichts – das passiert
+     erst, wenn der Besucher im Banner zugestimmt hat (siehe unten). -->
 <script>
 window.CLARITY_ID = 'y1t1gg53ow';
-(function (c, l, a, r, i, t, y) {
-  if (!i) return;
-  c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
-  t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i;
-  y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
-})(window, document, 'clarity', 'script', window.CLARITY_ID);
-</script>
-
-<!-- Meta-Pixel. ID leeren, um ihn abzuschalten. -->
-<script>
 window.META_PIXEL = '1079247811170929';
-!function (f, b, e, v, n, t, s) {
-  if (!window.META_PIXEL || f.fbq) return;
-  n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments); };
-  if (!f._fbq) f._fbq = n;
-  n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = [];
-  t = b.createElement(e); t.async = !0; t.src = v;
-  s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
-}(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
-if (window.fbq) { fbq('init', window.META_PIXEL); fbq('track', 'PageView'); }
+window.VERCEL_ANALYTICS = false;   // erst true, wenn im Vercel-Dashboard aktiviert
 </script>
 
 <style>
@@ -451,8 +418,71 @@ footer{
   position:relative; z-index:1; text-align:center;
   padding:4px 18px 24px; font-size:12px;
 }
-footer a{ color:var(--muted); text-decoration:none; display:inline-block; padding:13px 10px; }
-footer a:hover{ color:var(--green); text-decoration:underline; }
+footer a, footer button{
+  color:var(--muted); text-decoration:none; display:inline-block; padding:13px 10px;
+  background:none; border:0; font:inherit; font-size:12px; cursor:pointer;
+}
+footer a:hover, footer button:hover{ color:var(--green); text-decoration:underline; }
+
+/* ============================================================
+   Einwilligungsbanner
+   Ablehnen ist genauso leicht erreichbar wie Zustimmen – beides
+   sind gleich große Knöpfe nebeneinander.
+   ============================================================ */
+.cc{
+  position:fixed; left:0; right:0; bottom:0; z-index:1000;
+  padding:14px 14px calc(14px + env(safe-area-inset-bottom));
+  background:rgba(20,32,31,.34); backdrop-filter:blur(3px);
+  display:none;
+}
+.cc.is-on{ display:block; animation:ccIn .35s var(--ease) both; }
+@keyframes ccIn{ from{ opacity:0; transform:translateY(20px);} to{ opacity:1; transform:none;} }
+
+.cc-box{
+  max-width:620px; margin:0 auto; background:#FFF; border-radius:18px;
+  padding:20px 20px 18px; box-shadow:0 12px 40px rgba(20,32,31,.28);
+}
+.cc-box h2{ margin:0 0 8px; font-size:17px; font-weight:600; color:var(--ink); }
+.cc-box p{ margin:0; font-size:13.5px; line-height:1.55; color:var(--muted); }
+.cc-box a{ color:var(--green); text-decoration:underline; text-underline-offset:2px; }
+
+.cc-knoepfe{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
+.cc-btn{
+  appearance:none; cursor:pointer; font-family:inherit; font-size:15px; font-weight:600;
+  min-height:52px; padding:14px 12px; border-radius:12px; border:2px solid var(--green);
+  transition:background-color .2s, transform .18s var(--spring);
+}
+.cc-btn:hover{ transform:translateY(-2px); }
+.cc-btn:focus-visible{ outline:3px solid var(--sage); outline-offset:2px; }
+.cc-ja{ background:var(--green); color:#FFF; }
+.cc-ja:hover{ background:var(--green-hi); }
+.cc-nein{ background:#FFF; color:var(--green); }
+.cc-nein:hover{ background:var(--sage-50); }
+
+.cc-mehr{
+  margin-top:12px; text-align:center; font-size:13px;
+  background:none; border:0; color:var(--muted); cursor:pointer;
+  font-family:inherit; width:100%; padding:8px; text-decoration:underline;
+}
+.cc-details{ display:none; margin-top:14px; border-top:1px solid var(--line); padding-top:14px; }
+.cc-details.is-on{ display:block; }
+.cc-wahl{
+  display:flex; gap:12px; align-items:flex-start; padding:11px 0;
+  cursor:pointer;
+}
+.cc-wahl input{
+  appearance:none; flex:none; width:22px; height:22px; margin:1px 0 0;
+  border:2px solid var(--line); border-radius:6px; background:#FFF;
+  cursor:pointer; position:relative;
+}
+.cc-wahl input:checked{ background:var(--green); border-color:var(--green); }
+.cc-wahl input:checked::after{
+  content:''; position:absolute; left:6px; top:2px; width:5px; height:10px;
+  border:solid #FFF; border-width:0 2px 2px 0; transform:rotate(45deg);
+}
+.cc-wahl input:disabled{ background:var(--sage); border-color:var(--sage); cursor:default; }
+.cc-wahl b{ display:block; font-size:14px; color:var(--ink); font-weight:600; }
+.cc-wahl small{ display:block; font-size:12.5px; color:var(--muted); margin-top:2px; line-height:1.5; }
 
 @media (max-width:520px){
   .opt{ min-height:64px; padding:12px 14px; gap:12px; font-size:16px; }
@@ -716,8 +746,48 @@ footer a:hover{ color:var(--green); text-decoration:underline; }
 
 <footer>
   <a href="https://www.renesteffny.de/impressum/" target="_blank" rel="noopener">Impressum</a>
-  <a href="https://www.renesteffny.de/datenschutz/" target="_blank" rel="noopener">Datenschutz</a>
+  <a href="/datenschutz">Datenschutz</a>
+  <button type="button" id="ccOeffnen">Cookie-Einstellungen</button>
 </footer>
+
+<!-- ============ EINWILLIGUNG ============ -->
+<div class="cc" id="cc" role="dialog" aria-modal="true" aria-labelledby="ccTitel">
+  <div class="cc-box">
+    <h2 id="ccTitel">Kurz gefragt: Cookies?</h2>
+    <p>
+      Für den Bewerbungsbogen selbst brauchen wir nichts weiter. Zusätzlich würden wir
+      gerne messen, wie die Seite genutzt wird, und unsere Stellenanzeige auswerten.
+      Das ist freiwillig – ohne Zustimmung funktioniert alles genauso.
+      Details in der <a href="/datenschutz">Datenschutzerklärung</a>.
+    </p>
+
+    <div class="cc-details" id="ccDetails">
+      <label class="cc-wahl">
+        <input type="checkbox" checked disabled>
+        <span><b>Notwendig</b><small>Damit der Bogen funktioniert und deine Auswahl
+        gespeichert bleibt. Immer aktiv.</small></span>
+      </label>
+      <label class="cc-wahl">
+        <input type="checkbox" id="ccStatistik">
+        <span><b>Statistik</b><small>Microsoft Clarity zeichnet anonymisiert auf, wie die
+        Seite bedient wird, damit wir sie verbessern können.</small></span>
+      </label>
+      <label class="cc-wahl">
+        <input type="checkbox" id="ccMarketing">
+        <span><b>Marketing</b><small>Der Meta-Pixel misst, welche Anzeige zu einer
+        Bewerbung geführt hat.</small></span>
+      </label>
+      <button class="cc-btn cc-nein" type="button" id="ccSpeichern"
+              style="width:100%;margin-top:8px">Auswahl speichern</button>
+    </div>
+
+    <div class="cc-knoepfe">
+      <button class="cc-btn cc-nein" type="button" id="ccAblehnen">Nur notwendige</button>
+      <button class="cc-btn cc-ja"   type="button" id="ccAnnehmen">Alle akzeptieren</button>
+    </div>
+    <button class="cc-mehr" type="button" id="ccMehr">Einstellungen anzeigen</button>
+  </div>
+</div>
 
 <script>
 /* ============================================================
@@ -729,11 +799,61 @@ footer a:hover{ color:var(--green); text-decoration:underline; }
 const ENDPOINT = 'https://formspree.io/f/mppardvy';
 
 /* ============================================================
-   Tracking
-   Läuft ohne Konfiguration über Vercel Analytics. Wer zusätzlich
-   Google Analytics oder den Meta-Pixel nutzt, trägt hier die IDs ein –
-   dann laufen dieselben Ereignisse auch dorthin.
+   Einwilligung
+   Ohne Zustimmung wird kein Messwerkzeug geladen – weder Clarity
+   noch der Meta-Pixel. Erst die Auswahl im Banner hängt die Skripte ein.
    ============================================================ */
+const CONSENT_SCHLUESSEL = 'steffny-einwilligung-v1';
+
+function consentLesen(){
+  try { return JSON.parse(localStorage.getItem(CONSENT_SCHLUESSEL)); }
+  catch(e){ return null; }
+}
+function consentSpeichern(wahl){
+  try {
+    localStorage.setItem(CONSENT_SCHLUESSEL, JSON.stringify({
+      statistik: !!wahl.statistik, marketing: !!wahl.marketing,
+      zeitpunkt: new Date().toISOString()
+    }));
+  } catch(e){ /* z. B. privater Modus */ }
+}
+
+function clarityLaden(){
+  if (!window.CLARITY_ID || window.clarity) return;
+  (function (c, l, a, r, i, t, y) {
+    c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+    t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i;
+    y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+  })(window, document, 'clarity', 'script', window.CLARITY_ID);
+
+  if (window.VERCEL_ANALYTICS){
+    const s = document.createElement('script');
+    s.defer = true; s.src = '/_vercel/insights/script.js';
+    document.head.appendChild(s);
+  }
+}
+
+function metaLaden(){
+  if (!window.META_PIXEL || window.fbq) return;
+  !function (f, b, e, v, n, t, s) {
+    n = f.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments); };
+    if (!f._fbq) f._fbq = n;
+    n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = [];
+    t = b.createElement(e); t.async = !0; t.src = v;
+    s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s);
+  }(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', window.META_PIXEL);
+  fbq('track', 'PageView');
+}
+
+/* Setzt die gespeicherte Wahl um. Ein Widerruf greift erst nach dem
+   Neuladen vollständig – geladene Skripte lassen sich nicht zurückholen. */
+function consentAnwenden(wahl){
+  if (!wahl) return;
+  if (wahl.statistik) clarityLaden();
+  if (wahl.marketing) metaLaden();
+}
+
 const GA4_ID = '';   // z. B. 'G-XXXXXXXXXX'
 /* Clarity und Meta-Pixel werden schon im <head> geladen – die IDs stehen dort.
    Hier braucht es nur die Weiche in track(). */
@@ -1670,6 +1790,63 @@ $('#perks').innerHTML = PERKS.map((p, i) =>
 /* Direktkontakt auf der Danke-Seite mitzählen – zeigt, wie dringlich jemand ist */
 $('#kTel').addEventListener('click', () => track('kontakt_anruf', { label: 'Danke-Seite' }));
 $('#kMail').addEventListener('click', () => track('kontakt_mail', { label: 'Danke-Seite' }));
+
+/* ============================================================
+   Einwilligungsbanner steuern
+   ============================================================ */
+const ccKasten = $('#cc');
+
+function ccZeigen(){
+  const gespeichert = consentLesen();
+  if (gespeichert){
+    $('#ccStatistik').checked = !!gespeichert.statistik;
+    $('#ccMarketing').checked = !!gespeichert.marketing;
+  }
+  ccKasten.classList.add('is-on');
+}
+function ccSchliessen(){ ccKasten.classList.remove('is-on'); }
+
+function ccEntscheiden(wahl){
+  consentSpeichern(wahl);
+  consentAnwenden(wahl);
+  ccSchliessen();
+  track('einwilligung', {
+    label: (wahl.statistik ? 'Statistik' : '') + (wahl.marketing ? ' Marketing' : '') || 'nur notwendig',
+    statistik: !!wahl.statistik, marketing: !!wahl.marketing
+  });
+}
+
+$('#ccAnnehmen').addEventListener('click', () => ccEntscheiden({ statistik:true, marketing:true }));
+$('#ccAblehnen').addEventListener('click', () => ccEntscheiden({ statistik:false, marketing:false }));
+$('#ccSpeichern').addEventListener('click', () => ccEntscheiden({
+  statistik: $('#ccStatistik').checked, marketing: $('#ccMarketing').checked
+}));
+$('#ccMehr').addEventListener('click', () => {
+  const d = $('#ccDetails');
+  const offen = d.classList.toggle('is-on');
+  $('#ccMehr').textContent = offen ? 'Einstellungen ausblenden' : 'Einstellungen anzeigen';
+});
+$('#ccOeffnen').addEventListener('click', () => { $('#ccDetails').classList.add('is-on'); ccZeigen(); });
+
+/* Beim Laden: gespeicherte Wahl umsetzen oder fragen.
+   Der Link „?cookies=1“ aus der Datenschutzerklärung öffnet die Einstellungen. */
+const ccGespeichert = consentLesen();
+if (/[?&]cookies=1/.test(location.search)){
+  if (ccGespeichert) consentAnwenden(ccGespeichert);
+  $('#ccDetails').classList.add('is-on');
+  ccZeigen();
+} else if (ccGespeichert){
+  consentAnwenden(ccGespeichert);
+} else {
+  ccZeigen();
+}
+
+/* Wer direkt auf /danke oder /frage-4-... landet (Lesezeichen, geteilter Link),
+   startet vorne – mitten im Funnel ohne Antworten aufzusetzen wäre sinnlos.
+   Die Adresse zieht mit, damit sie zum Gezeigten passt. */
+if (location.pathname !== SEITEN.intro.pfad){
+  history.replaceState({ pfad: SEITEN.intro.pfad }, '', SEITEN.intro.pfad);
+}
 
 track('startseite_gesehen', { label: document.referrer ? 'mit Herkunft' : 'direkt',
                               herkunft: document.referrer || 'direkt' });
