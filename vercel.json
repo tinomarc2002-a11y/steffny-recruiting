@@ -11,5 +11,12 @@
         { "key": "Permissions-Policy",         "value": "geolocation=(), microphone=(), camera=()" }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/frage-(.*)",        "destination": "/index.html" },
+    { "source": "/bewerbung",         "destination": "/index.html" },
+    { "source": "/noch-in-ausbildung","destination": "/index.html" },
+    { "source": "/kein-abschluss",    "destination": "/index.html" },
+    { "source": "/danke",             "destination": "/index.html" }
   ]
 }
